@@ -22,6 +22,7 @@ package output
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -82,6 +83,15 @@ func FilterAndSort[T any](items []T, def *TableDefinition, opts *FilterOptions) 
 				}
 				if colIdx < len(cj) {
 					vj = cj[colIdx]
+				}
+				// Try numeric comparison first; fall back to string
+				fi, errI := strconv.ParseFloat(vi, 64)
+				fj, errJ := strconv.ParseFloat(vj, 64)
+				if errI == nil && errJ == nil {
+					if descending {
+						return fi > fj
+					}
+					return fi < fj
 				}
 				if descending {
 					return vi > vj

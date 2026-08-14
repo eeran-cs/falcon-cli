@@ -21,9 +21,12 @@
 package cmdutil
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/go-openapi/runtime"
 )
 
 // fqlSyntaxRe matches a minimal valid FQL clause: field + operator + value.
@@ -104,24 +107,27 @@ var featureRequirements = map[string]string{
 }
 
 // HandleAPIError wraps a gofalcon API error with an actionable message.
-// It inspects the HTTP status code and maps 401/403 errors to the specific
-// API scope required, and 404 errors to missing tenant features.
+// It inspects the HTTP status code via runtime.APIError and maps errors
+// to the specific API scope required or missing tenant features.
 func HandleAPIError(err error, operation string) error {
 	if err == nil {
 		return nil
 	}
 
-	msg := err.Error()
+	var apiErr *runtime.APIError
+	if !errors.As(err, &apiErr) {
+		// Not a typed API error — return as-is with operation context
+		return fmt.Errorf("%s: %w", operation, err)
+	}
 
-	// Detect HTTP status from gofalcon error strings (e.g. "[GET /path][403] opForbidden")
 	switch {
-	case contains(msg, "401", "Unauthorized", "unauthorized"):
+	case apiErr.Code == 401:
 		return fmt.Errorf("%s: authentication failed (HTTP 401)\n"+
 			"  Check that FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are correct.\n"+
 			"  For non-US-1 regions, set FALCON_BASE_URL (e.g. https://api.eu-1.crowdstrike.com).\n"+
 			"  Run 'falcon --help' to see all credential options", operation)
 
-	case contains(msg, "403", "Forbidden", "forbidden", "access denied", "scope not permitted"):
+	case apiErr.Code == 403:
 		if scope, ok := scopeRequirements[operation]; ok {
 			hint := fmt.Sprintf("%s: access denied (HTTP 403)\n"+
 				"  Required scope: %s\n\n"+
@@ -143,19 +149,19 @@ func HandleAPIError(err error, operation string) error {
 			"  Check scopes at: https://falcon.crowdstrike.com/api-clients-and-keys",
 			operation)
 
-	case contains(msg, "404", "not found", "Not Found"):
+	case apiErr.Code == 404:
 		if feature, ok := featureRequirements[operation]; ok {
 			return fmt.Errorf("%s: feature not available (HTTP 404)\n  Requires: %s", operation, feature)
 		}
 		return fmt.Errorf("%s: resource not found (HTTP 404)", operation)
 
-	case contains(msg, "400", "Bad Request", "bad request"):
-		return fmt.Errorf("%s: bad request (HTTP 400) — %s", operation, firstLine(msg))
+	case apiErr.Code == 400:
+		return fmt.Errorf("%s: bad request (HTTP 400) — %s", operation, FirstLine(err.Error()))
 
-	case contains(msg, "429", "Too Many Requests", "rate limit"):
+	case apiErr.Code == 429:
 		return fmt.Errorf("%s: rate limited (HTTP 429) — too many requests, wait and retry", operation)
 
-	case contains(msg, "500", "502", "503", "internal server error", "Service Unavailable"):
+	case apiErr.Code >= 500:
 		return fmt.Errorf("%s: Falcon API server error — try again or check https://status.crowdstrike.com", operation)
 	}
 
@@ -172,8 +178,11 @@ func contains(s string, keywords ...string) bool {
 	return false
 }
 
-// firstLine returns the first non-empty line of a string, trimmed.
-func firstLine(s string) string {
+// ContainsAnyFold reports whether s contains any of the keywords, case-insensitively.
+func ContainsAnyFold(s string, keywords ...string) bool { return contains(s, keywords...) }
+
+// FirstLine returns the first non-empty line of a string, trimmed.
+func FirstLine(s string) string {
 	for line := range strings.SplitSeq(s, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
@@ -186,3 +195,6 @@ func firstLine(s string) string {
 	}
 	return s
 }
+
+// firstLine is the unexported alias kept for internal use.
+func firstLine(s string) string { return FirstLine(s) }

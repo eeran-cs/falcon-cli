@@ -26,6 +26,18 @@ func Int64Ptr(v int64) *int64 { return &v }
 // Int32Ptr returns a pointer to the given int32 value.
 func Int32Ptr(v int32) *int32 { return &v }
 
+// Ptr returns a pointer to the given value.
+func Ptr[T any](v T) *T { return &v }
+
+// Deref dereferences a pointer, returning the zero value if nil.
+func Deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
+}
+
 // StringPtr returns a pointer to the given string value, or nil if empty.
 func StringPtr(v string) *string {
 	if v == "" {
@@ -33,3 +45,6 @@ func StringPtr(v string) *string {
 	}
 	return &v
 }
+
+// StringPtrOrNil is an alias for StringPtr — returns nil for the empty string.
+func StringPtrOrNil(v string) *string { return StringPtr(v) }

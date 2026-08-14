@@ -21,6 +21,7 @@
 package kubernetes
 
 import (
+	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -49,9 +50,4 @@ func NewKubernetesCmd(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
-func strp(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
+func strp(p *string) string { return cmdutil.Deref(p) }

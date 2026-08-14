@@ -21,14 +21,11 @@
 package risks
 
 import (
-	"time"
-
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/crowdstrike/falcon-cli/pkg/output"
 	"github.com/crowdstrike/gofalcon/falcon/client/cloud_security"
 	"github.com/crowdstrike/gofalcon/falcon/models"
-	"github.com/go-openapi/strfmt"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -112,12 +109,12 @@ func runList(opts *listOptions) error {
 				return []string{"", "", "", "", "", ""}
 			}
 			return []string{
-				derefString(r.ID),
-				derefString(r.Severity),
-				derefString(r.RuleName),
-				derefString(r.Provider),
-				derefString(r.Status),
-				formatDate(r.FirstSeen),
+				cmdutil.Deref(r.ID),
+				cmdutil.Deref(r.Severity),
+				cmdutil.Deref(r.RuleName),
+				cmdutil.Deref(r.Provider),
+				cmdutil.Deref(r.Status),
+				cmdutil.FormatDate(r.FirstSeen),
 			}
 		},
 	}
@@ -127,22 +124,4 @@ func runList(opts *listOptions) error {
 	tableOpts := opts.Table.ToOutputTableOptions()
 	printer := output.NewPrinter(output.Format(opts.Output), def, tableOpts)
 	return printer.Print(opts.Factory.IOStreams.Out, resources)
-}
-
-func derefString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-func formatDate(t *strfmt.DateTime) string {
-	if t == nil {
-		return ""
-	}
-	tm := time.Time(*t)
-	if tm.IsZero() {
-		return ""
-	}
-	return tm.Format("2006-01-02")
 }

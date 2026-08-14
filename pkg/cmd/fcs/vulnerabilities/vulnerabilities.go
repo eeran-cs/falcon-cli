@@ -44,10 +44,3 @@ func NewVulnerabilitiesCmd(f *factory.Factory) *cobra.Command {
 	cmd.AddCommand(NewCmdList(f))
 	return cmd
 }
-
-func strp(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}

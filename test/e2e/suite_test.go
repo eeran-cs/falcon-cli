@@ -18,17 +18,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Package e2e_test exercises fcs commands end-to-end using in-process cobra
+// execution against an httptest.Server that replays fixture JSON. No network
+// calls, no credentials, no pre-built binary required.
 package e2e_test
 
 import (
+	"bytes"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	openapi "github.com/go-openapi/runtime"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs"
+	"github.com/crowdstrike/falcon-cli/pkg/config"
+	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/falcon-cli/pkg/iostreams"
+	"github.com/crowdstrike/gofalcon/falcon/client"
 )
 
 func TestE2E(t *testing.T) {
@@ -36,99 +51,102 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "falcon fcs e2e")
 }
 
-var _ = BeforeSuite(func() {
-	// Require a runnable binary
-	bin := falconBin()
-	if _, err := exec.LookPath(bin); err != nil {
-		if _, err2 := os.Stat(bin); err2 != nil {
-			Skip("falcon binary not found — run 'make build' first or set FALCON_BIN")
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+// testdataPath resolves a fixture file under testdata/.
+func testdataPath(name string) string {
+	return filepath.Join("testdata", name)
+}
+
+// mustReadFixture reads a testdata file or fails the test.
+func mustReadFixture(name string) []byte {
+	data, err := os.ReadFile(testdataPath(name))
+	Expect(err).NotTo(HaveOccurred(), "fixture %s", name)
+	return data
+}
+
+// route is a single endpoint mapping for the mock server.
+type route struct {
+	method  string
+	prefix  string
+	fixture string
+	status  int
+}
+
+// newMockServer creates an httptest.Server backed by a list of routes.
+// Routes are matched by method + path prefix (first match wins).
+func newMockServer(routes []route) *httptest.Server {
+	mux := http.NewServeMux()
+
+	// Fallback handler for unmatched routes
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, rt := range routes {
+			if r.Method == rt.method && strings.HasPrefix(r.URL.Path, rt.prefix) {
+				status := rt.status
+				if status == 0 {
+					status = http.StatusOK
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				data := mustReadFixture(rt.fixture)
+				_, _ = w.Write(data)
+				return
+			}
 		}
-	}
-
-	// Require credentials or a config file
-	hasEnvCreds := os.Getenv("FALCON_CLIENT_ID") != "" && os.Getenv("FALCON_CLIENT_SECRET") != ""
-	configFile := filepath.Join(os.Getenv("HOME"), ".falcon", "config.yaml")
-	_, configErr := os.Stat(configFile)
-	hasConfigFile := configErr == nil
-	if !hasEnvCreds && !hasConfigFile {
-		Skip("e2e tests require FALCON_CLIENT_ID and FALCON_CLIENT_SECRET or a config file at ~/.falcon/config.yaml")
-	}
-})
-
-// falconBin returns the path to the falcon binary under test.
-// Resolved from FALCON_BIN env var, then ./falcon, then PATH.
-func falconBin() string {
-	if b := os.Getenv("FALCON_BIN"); b != "" {
-		return b
-	}
-	if _, err := os.Stat("../../falcon"); err == nil {
-		return "../../falcon"
-	}
-	if b, err := exec.LookPath("falcon"); err == nil {
-		return b
-	}
-	return "falcon"
+		// No match — return 404
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors":[{"message":"not found"}]}`))
+	})
+	mux.Handle("/", handler)
+	return httptest.NewServer(mux)
 }
 
-// cwppProfile returns the CWPP-provisioned profile name from CWPP_PROFILE env var.
-// Empty string means CWPP tests should be skipped.
-func cwppProfile() string {
-	return os.Getenv("CWPP_PROFILE")
+// newTestFactory creates a Factory wired to the given httptest.Server.
+// Returns the factory and the stdout buffer for assertion.
+func newTestFactory(server *httptest.Server) (*factory.Factory, *bytes.Buffer) {
+	var stdout bytes.Buffer
+
+	// Build a go-openapi transport pointing at the test server
+	u := server.URL
+	host := strings.TrimPrefix(u, "http://")
+	transport := httptransport.New(host, "/", []string{"http"})
+	transport.Transport = server.Client().Transport
+	// Ensure JSON consumer is used for all responses
+	transport.Consumers["application/json"] = openapi.JSONConsumer()
+	transport.Producers["application/json"] = openapi.JSONProducer()
+
+	falconClient := client.New(transport, strfmt.Default)
+
+	f := &factory.Factory{
+		IOStreams: &iostreams.IOStreams{
+			In:     io.NopCloser(strings.NewReader("")),
+			Out:    &stdout,
+			ErrOut: &stdout,
+		},
+		Config: func() (config.Config, error) {
+			return config.Config{
+				ClientID:     "test-client-id-1234",
+				ClientSecret: "test-secret",
+			}, nil
+		},
+		FalconClient: func() (*client.CrowdStrikeAPISpecification, error) {
+			return falconClient, nil
+		},
+	}
+
+	return f, &stdout
 }
 
-// falcon runs the falcon binary with the given args and returns stdout+stderr combined.
-func falcon(args ...string) (string, error) {
-	cmd := exec.Command(falconBin(), args...) //nolint:gosec
-	out, err := cmd.CombinedOutput()
-	return strings.TrimSpace(string(out)), err
-}
-
-// falconWithProfile runs the falcon binary with -p <profile> prepended to args.
-func falconWithProfile(profile string, args ...string) (string, error) {
-	full := append([]string{"-p", profile}, args...)
-	return falcon(full...)
-}
-
-// isPermissionError returns true when the output contains a 403/scope error.
-func isPermissionError(out string) bool {
-	for _, kw := range []string{"403", "access denied", "scope not permitted", "Forbidden"} {
-		if strings.Contains(strings.ToLower(out), strings.ToLower(kw)) {
-			return true
-		}
-	}
-	return false
-}
-
-// isFeatureError returns true when output indicates a missing feature/404.
-func isFeatureError(out string) bool {
-	for _, kw := range []string{"404", "feature not available", "not provisioned", "not found"} {
-		if strings.Contains(strings.ToLower(out), strings.ToLower(kw)) {
-			return true
-		}
-	}
-	return false
-}
-
-// skipIfPermissionOrFeatureError skips the current spec if the output looks like
-// a known API limitation (missing scope or feature not provisioned).
-func skipIfPermissionOrFeatureError(out string, err error) {
-	if err == nil {
-		return
-	}
-	if isPermissionError(out) {
-		Skip("missing API scope: " + firstLine(out))
-	}
-	if isFeatureError(out) {
-		Skip("feature not provisioned or no data: " + firstLine(out))
-	}
-}
-
-func firstLine(s string) string {
-	for _, line := range strings.Split(s, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return line
-		}
-	}
-	return s
+// runFCS executes an fcs subcommand in-process and returns the combined output.
+func runFCS(f *factory.Factory, stdout *bytes.Buffer, args ...string) (string, error) {
+	stdout.Reset()
+	cmd := fcs.NewFCSCmd(f)
+	cmd.SetArgs(args)
+	// Silence usage/error printing so we only get our output
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+	err := cmd.Execute()
+	return stdout.String(), err
 }

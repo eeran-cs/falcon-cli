@@ -22,6 +22,7 @@ package vulnerabilities
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
@@ -45,17 +46,17 @@ var vulnTableDef = &output.TableDefinition{
 		}
 		images := ""
 		if r.ImagesImpacted != nil {
-			images = fmt.Sprintf("%d", *r.ImagesImpacted)
+			images = strconv.FormatInt(int64(*r.ImagesImpacted), 10)
 		}
 		containers := ""
 		if r.ContainersImpacted != nil {
-			containers = fmt.Sprintf("%d", *r.ContainersImpacted)
+			containers = strconv.FormatInt(int64(*r.ContainersImpacted), 10)
 		}
 		remediation := "false"
 		if r.RemediationAvailable != nil && *r.RemediationAvailable {
 			remediation = "true"
 		}
-		return []string{strp(r.CveID), strp(r.Severity), cvss, images, containers, remediation}
+		return []string{cmdutil.Deref(r.CveID), cmdutil.Deref(r.Severity), cvss, images, containers, remediation}
 	},
 }
 
@@ -104,9 +105,13 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 				return cmdutil.HandleAPIError(err, "ReadCombinedVulnerabilities")
 			}
 
-			resources := output.FilterAndSort(resp.Payload.Resources, vulnTableDef, opts.Client.ToFilterOptions())
 			tableOpts := opts.Table.ToOutputTableOptions()
 			printer := output.NewPrinter(output.Format(opts.out), vulnTableDef, tableOpts)
+
+			if resp.Payload == nil {
+				return printer.Print(f.IOStreams.Out, []*models.ModelsAPIVulnerabilityCombined{})
+			}
+			resources := output.FilterAndSort(resp.Payload.Resources, vulnTableDef, opts.Client.ToFilterOptions())
 			return printer.Print(f.IOStreams.Out, resources)
 		},
 	}

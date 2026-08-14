@@ -21,14 +21,11 @@
 package iom
 
 import (
-	"time"
-
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/crowdstrike/falcon-cli/pkg/output"
 	"github.com/crowdstrike/gofalcon/falcon/client/cloud_security_detections"
 	"github.com/crowdstrike/gofalcon/falcon/models"
-	"github.com/go-openapi/strfmt"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -113,7 +110,7 @@ func runList(opts *listOptions) error {
 			if e.Evaluation != nil {
 				severity = e.Evaluation.Severity
 				status = e.Evaluation.Status
-				created = formatDate(&e.Evaluation.Created)
+				created = cmdutil.FormatDate(&e.Evaluation.Created)
 				if e.Evaluation.Rule != nil {
 					ruleID = e.Evaluation.Rule.ID
 				}
@@ -151,15 +148,4 @@ func runList(opts *listOptions) error {
 	resources = output.FilterAndSort(resources, def, opts.Client.ToFilterOptions())
 
 	return printer.Print(opts.Factory.IOStreams.Out, resources)
-}
-
-func formatDate(t *strfmt.DateTime) string {
-	if t == nil {
-		return ""
-	}
-	tm := time.Time(*t)
-	if tm.IsZero() {
-		return ""
-	}
-	return tm.Format("2006-01-02")
 }

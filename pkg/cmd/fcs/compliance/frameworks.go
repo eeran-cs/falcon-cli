@@ -139,6 +139,11 @@ func runFrameworks(opts *frameworksOptions) error {
 		return cmdutil.HandleAPIError(err, "get compliance framework posture summaries")
 	}
 
+	if res.Payload == nil {
+		tableOpts := opts.Table.ToOutputTableOptions()
+		printer := output.NewPrinter(output.Format(opts.output), frameworksTable, tableOpts)
+		return printer.Print(opts.factory.IOStreams.Out, []*models.ComplianceFrameworkSummary{})
+	}
 	resources := output.FilterAndSort(res.Payload.Resources, frameworksTable, opts.Client.ToFilterOptions())
 	tableOpts := opts.Table.ToOutputTableOptions()
 	printer := output.NewPrinter(output.Format(opts.output), frameworksTable, tableOpts)

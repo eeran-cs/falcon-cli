@@ -109,7 +109,7 @@ func runList(opts *listOptions) error {
 
 	def := &output.TableDefinition{
 		Headers: []string{"ID", "NAME", "TYPE", "PROVIDER", "REGION", "ACCOUNT"},
-		RowFunc: func(item interface{}) []string {
+		RowFunc: func(item any) []string {
 			r, ok := item.(*models.ResourcesCloudResource)
 			if !ok || r == nil {
 				return []string{"", "", "", "", "", ""}

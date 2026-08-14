@@ -101,7 +101,10 @@ func runList(opts *listOptions) error {
 		return cmdutil.HandleAPIError(err, "query suppression rules")
 	}
 
-	ids := queryRes.Payload.Resources
+	var ids []string
+	if queryRes.Payload != nil {
+		ids = queryRes.Payload.Resources
+	}
 	tableOpts := opts.Table.ToOutputTableOptions()
 	printer := output.NewPrinter(output.Format(opts.output), suppressionTable, tableOpts)
 	if len(ids) == 0 {
@@ -116,6 +119,9 @@ func runList(opts *listOptions) error {
 		return cmdutil.HandleAPIError(err, "get suppression rules")
 	}
 
+	if getRes.Payload == nil {
+		return printer.Print(opts.factory.IOStreams.Out, []*models.ApimodelsSuppressionRule{})
+	}
 	resources := output.FilterAndSort(getRes.Payload.Resources, suppressionTable, opts.Client.ToFilterOptions())
 	return printer.Print(opts.factory.IOStreams.Out, resources)
 }

@@ -23,6 +23,7 @@ package compliance
 import (
 	"strconv"
 
+	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -57,12 +58,7 @@ func NewComplianceCmd(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
-func str(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
+func str(p *string) string { return cmdutil.Deref(p) }
 
 func i32(v int32) string {
 	return strconv.FormatInt(int64(v), 10)

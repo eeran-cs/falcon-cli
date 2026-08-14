@@ -21,6 +21,7 @@
 package suppression
 
 import (
+	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/crowdstrike/falcon-cli/pkg/output"
 	"github.com/crowdstrike/gofalcon/falcon/models"
@@ -37,7 +38,7 @@ var (
         falcon fcs suppression list
 
         # Create a suppression rule
-        falcon fcs suppression create --name "Ignore dev buckets" --suppression-reason accepted_risk
+        falcon fcs suppression create --name "Ignore dev buckets" --reason accepted_risk
 
         # Delete suppression rules
         falcon fcs suppression delete --ids 1a2b3c4d
@@ -76,13 +77,6 @@ var suppressionTable = &output.TableDefinition{
 		if r.CreatedAt != nil {
 			created = r.CreatedAt.String()
 		}
-		return []string{str(r.ID), str(r.Name), r.Description, status, created}
+		return []string{cmdutil.Deref(r.ID), cmdutil.Deref(r.Name), r.Description, status, created}
 	},
-}
-
-func str(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }

@@ -18,32 +18,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package iac
+package cmdutil
 
 import (
-	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
-	"github.com/crowdstrike/falcon-cli/pkg/factory"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/templates"
+	"time"
+
+	"github.com/go-openapi/strfmt"
 )
 
-// NewIACCmd represents the iac command group.
-func NewIACCmd(f *factory.Factory) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "iac",
-		Short: "Manage Infrastructure-as-Code detections",
-		Long:  templates.LongDesc(`Query IaC (Infrastructure-as-Code) security detections from Falcon.`),
-		Example: templates.Examples(`
-            # List IaC detections
-            falcon fcs iac list
-
-            # Filter by severity
-            falcon fcs iac list --filter "severity:'high'"
-        `),
+// FormatDate formats a strfmt.DateTime pointer as "YYYY-MM-DD", or "" if nil/zero.
+func FormatDate(t *strfmt.DateTime) string {
+	if t == nil {
+		return ""
 	}
-
-	cmd.AddCommand(NewCmdList(f))
-	return cmd
+	tm := time.Time(*t)
+	if tm.IsZero() {
+		return ""
+	}
+	return tm.Format("2006-01-02")
 }
-
-func strp(p *string) string { return cmdutil.Deref(p) }

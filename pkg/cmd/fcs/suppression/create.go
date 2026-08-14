@@ -40,13 +40,7 @@ func NewCmdCreate(f *factory.Factory) *cobra.Command {
 		scopeType         string
 		suppressionReason string
 		ruleSelectionType string
-	}{
-		domain:            "CSPM",
-		subdomain:         "IOM",
-		scopeType:         "all_assets",
-		suppressionReason: "false-positive",
-		ruleSelectionType: "rule_selection_filter",
-	}
+	}{}
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -88,7 +82,10 @@ func NewCmdCreate(f *factory.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.name, "name", "", "Name of the suppression rule")
 	cmd.Flags().StringVar(&opts.description, "description", "", "Description of the suppression rule")
 	cmd.Flags().StringVar(&opts.domain, "domain", "cspm", "Domain (default: cspm)")
-	cmd.Flags().StringVar(&opts.suppressionReason, "reason", "false_positive", "Suppression reason")
+	cmd.Flags().StringVar(&opts.subdomain, "subdomain", "IOM", "Subdomain (default: IOM)")
+	cmd.Flags().StringVar(&opts.scopeType, "scope-type", "all_assets", "Scope type (default: all_assets)")
+	cmd.Flags().StringVar(&opts.suppressionReason, "reason", "false_positive", "Suppression reason: false_positive, accepted_risk")
+	cmd.Flags().StringVar(&opts.ruleSelectionType, "rule-selection-type", "rule_selection_filter", "Rule selection type")
 	_ = cmd.MarkFlagRequired("name")
 	return cmd
 }

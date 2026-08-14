@@ -22,16 +22,19 @@ package fcs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/falcon-cli/pkg/output"
 	"github.com/crowdstrike/gofalcon/falcon/client/cloud_policies"
 	"github.com/crowdstrike/gofalcon/falcon/client/cloud_security_assets"
 	"github.com/crowdstrike/gofalcon/falcon/client/container_images"
 	"github.com/crowdstrike/gofalcon/falcon/client/container_vulnerabilities"
 	"github.com/crowdstrike/gofalcon/falcon/client/cspg_iacapi"
 	"github.com/crowdstrike/gofalcon/falcon/client/kubernetes_protection"
+	"github.com/go-openapi/runtime"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -56,6 +59,20 @@ type probeSpec struct {
 	Command string
 	Scope   string
 	fn      func() probeStatus
+}
+
+// doctorTableDef renders probe results through the shared output package.
+// NOTE: For fancier table rendering (borders, colors), consider adopting a
+// library like github.com/jedib0t/go-pretty or github.com/olekukonko/tablewriter.
+var doctorTableDef = &output.TableDefinition{
+	Headers: []string{"COMMAND", "SCOPE", "STATUS"},
+	RowFunc: func(item any) []string {
+		r, ok := item.(*probeResult)
+		if !ok {
+			return nil
+		}
+		return []string{r.Command, r.Scope, statusIcon(r.Status)}
+	},
 }
 
 // NewCmdDoctor returns a command that probes each fcs scope group and reports
@@ -141,7 +158,6 @@ func runDoctor(f *factory.Factory, outputFmt string) error {
 			Command: "fcs compliance frameworks / rules",
 			Scope:   "CSPM Registration: Read + Compliance posture feature",
 			fn: func() probeStatus {
-				// Auto-discover framework IDs first; 404 = feature not provisioned
 				p := cloud_policies.NewQueryComplianceFrameworksParams()
 				p.Limit = &one
 				_, err := falconClient.CloudPolicies.QueryComplianceFrameworks(p)
@@ -181,7 +197,7 @@ func runDoctor(f *factory.Factory, outputFmt string) error {
 	}
 
 	// Run all probes
-	results := make([]probeResult, 0, len(probes))
+	results := make([]*probeResult, 0, len(probes))
 	for _, p := range probes {
 		status := p.fn()
 		detail := ""
@@ -193,7 +209,7 @@ func runDoctor(f *factory.Factory, outputFmt string) error {
 		case probeError:
 			detail = "unexpected error"
 		}
-		results = append(results, probeResult{
+		results = append(results, &probeResult{
 			Command: p.Command,
 			Scope:   p.Scope,
 			Status:  status,
@@ -207,82 +223,16 @@ func runDoctor(f *factory.Factory, outputFmt string) error {
 
 	// Print client ID prefix for context
 	if cfg.ClientID != "" {
-		fmt.Fprintf(f.IOStreams.Out, "\nChecking permissions for client: %s...\n", cfg.ClientID[:min(8, len(cfg.ClientID))])
-	}
-	return printDoctorTable(f, results)
-}
-
-func classifyErr(err error) probeStatus {
-	if err == nil {
-		return probeOK
-	}
-	msg := strings.ToLower(err.Error())
-	if containsAny(msg, "403", "forbidden", "access denied", "scope not permitted") {
-		return probeAccessDenied
-	}
-	if containsAny(msg, "404", "not found") {
-		return probeNotFound
-	}
-	return probeError
-}
-
-func containsAny(s string, keywords ...string) bool {
-	for _, k := range keywords {
-		if strings.Contains(s, k) {
-			return true
-		}
-	}
-	return false
-}
-
-func printDoctorTable(f *factory.Factory, results []probeResult) error {
-	out := f.IOStreams.Out
-
-	// Header
-	fmt.Fprintf(out, "\n")
-
-	// Column widths
-	const (
-		cmdWidth   = 42
-		scopeWidth = 42
-		statWidth  = 8
-	)
-
-	header := fmt.Sprintf("%-*s  %-*s  %s", cmdWidth, "Command", scopeWidth, "Scope required", "Status")
-	fmt.Fprintln(out, header)
-	fmt.Fprintln(out, strings.Repeat("─", len(header)+4))
-
-	missingScopes := map[string][]string{} // scope → commands
-
-	for _, r := range results {
-		icon := statusIcon(r.Status)
-		cmd := truncateTo(r.Command, cmdWidth)
-		scope := truncateTo(r.Scope, scopeWidth)
-		fmt.Fprintf(out, "%-*s  %-*s  %s\n", cmdWidth, cmd, scopeWidth, scope, icon)
-
-		if r.Status == probeAccessDenied {
-			// Group by base scope (strip "..." suffix from long scopes)
-			basescope := strings.Split(r.Scope, " +")[0]
-			missingScopes[basescope] = append(missingScopes[basescope], r.Command)
-		}
+		fmt.Fprintf(f.IOStreams.Out, "\nChecking permissions for client: %s...\n\n", cfg.ClientID[:min(8, len(cfg.ClientID))])
 	}
 
-	fmt.Fprintln(out, "")
-
-	if len(missingScopes) > 0 {
-		fmt.Fprintln(out, "Missing scopes — add at https://falcon.crowdstrike.com/api-clients-and-keys:")
-		for scope, cmds := range missingScopes {
-			fmt.Fprintf(out, "  • %s\n", scope)
-			fmt.Fprintf(out, "    Commands: %s\n", strings.Join(cmds, ", "))
-		}
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "  Note: If the scope is already enabled, the Falcon Cloud Workload Protection")
-		fmt.Fprintln(out, "  (CWPP) product may not be provisioned in this tenant.")
-		fmt.Fprintln(out, "  Contact your Falcon admin to verify product entitlements.")
-		fmt.Fprintln(out, "")
+	printer := output.NewPrinter(output.FormatTable, doctorTableDef)
+	if err := printer.Print(f.IOStreams.Out, results); err != nil {
+		return err
 	}
 
-	// Summary line
+	// Summary footer
+	missingScopes := map[string][]string{}
 	ok, denied, notFound, errCount := 0, 0, 0, 0
 	for _, r := range results {
 		switch r.Status {
@@ -290,17 +240,50 @@ func printDoctorTable(f *factory.Factory, results []probeResult) error {
 			ok++
 		case probeAccessDenied:
 			denied++
+			basescope := strings.Split(r.Scope, " +")[0]
+			missingScopes[basescope] = append(missingScopes[basescope], r.Command)
 		case probeNotFound:
 			notFound++
 		default:
 			errCount++
 		}
 	}
+
+	out := f.IOStreams.Out
+	fmt.Fprintln(out)
+	if len(missingScopes) > 0 {
+		fmt.Fprintln(out, "Missing scopes — add at https://falcon.crowdstrike.com/api-clients-and-keys:")
+		for scope, cmds := range missingScopes {
+			fmt.Fprintf(out, "  • %s\n", scope)
+			fmt.Fprintf(out, "    Commands: %s\n", strings.Join(cmds, ", "))
+		}
+		fmt.Fprintln(out)
+		fmt.Fprintln(out, "  Note: If the scope is already enabled, the Falcon Cloud Workload Protection")
+		fmt.Fprintln(out, "  (CWPP) product may not be provisioned in this tenant.")
+		fmt.Fprintln(out, "  Contact your Falcon admin to verify product entitlements.")
+		fmt.Fprintln(out)
+	}
 	fmt.Fprintf(out, "Results: ✅ %d available  ❌ %d access denied  ⚠️  %d not provisioned\n\n", ok, denied, notFound+errCount)
 	return nil
 }
 
-func printDoctorJSON(f *factory.Factory, results []probeResult) error {
+func classifyErr(err error) probeStatus {
+	if err == nil {
+		return probeOK
+	}
+	var apiErr *runtime.APIError
+	if errors.As(err, &apiErr) {
+		switch {
+		case apiErr.Code == 403:
+			return probeAccessDenied
+		case apiErr.Code == 404:
+			return probeNotFound
+		}
+	}
+	return probeError
+}
+
+func printDoctorJSON(f *factory.Factory, results []*probeResult) error {
 	enc := json.NewEncoder(f.IOStreams.Out)
 	enc.SetIndent("", "  ")
 	return enc.Encode(results)
@@ -317,11 +300,4 @@ func statusIcon(s probeStatus) string {
 	default:
 		return "⚠️ "
 	}
-}
-
-func truncateTo(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-3] + "..."
 }

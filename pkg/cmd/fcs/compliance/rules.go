@@ -136,6 +136,11 @@ func runRules(opts *rulesOptions) error {
 		return cmdutil.HandleAPIError(err, "get compliance rule posture summaries")
 	}
 
+	if res.Payload == nil {
+		tableOpts := opts.Table.ToOutputTableOptions()
+		printer := output.NewPrinter(output.Format(opts.output), rulesTable, tableOpts)
+		return printer.Print(opts.factory.IOStreams.Out, []*models.ComplianceRulePostureSummary{})
+	}
 	resources := output.FilterAndSort(res.Payload.Resources, rulesTable, opts.Client.ToFilterOptions())
 	tableOpts := opts.Table.ToOutputTableOptions()
 	printer := output.NewPrinter(output.Format(opts.output), rulesTable, tableOpts)

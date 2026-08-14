@@ -56,6 +56,9 @@ func NewCmdGet(f *factory.Factory) *cobra.Command {
 			}
 
 			printer := output.NewPrinter(output.Format(out), groupTableDef)
+			if resp.Payload == nil {
+				return printer.Print(f.IOStreams.Out, nil)
+			}
 			return printer.Print(f.IOStreams.Out, resp.Payload.Resources)
 		},
 	}

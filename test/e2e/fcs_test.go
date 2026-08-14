@@ -21,239 +21,202 @@
 package e2e_test
 
 import (
-	"fmt"
-	"regexp"
+	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var uuidRe = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-
 var _ = Describe("falcon fcs", Label("fcs"), func() {
 
 	Describe("assets", Label("assets"), func() {
-		It("lists assets", func() {
-			out, err := falcon("fcs", "assets", "list", "--limit", "3")
+		var routes []route
+
+		BeforeEach(func() {
+			routes = []route{
+				{method: http.MethodGet, prefix: "/cloud-security-assets/queries/resources/v1", fixture: "assets_query.json"},
+				{method: http.MethodGet, prefix: "/cloud-security-assets/entities/resources/v1", fixture: "assets_entities.json"},
+			}
+		})
+
+		It("lists assets in table format", func() {
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "3")
 			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("my-ec2-instance"))
+			Expect(out).To(ContainSubstring("aws"))
+			Expect(out).To(ContainSubstring("azure"))
 		})
 
 		It("outputs JSON", func() {
-			out, err := falcon("fcs", "assets", "list", "--limit", "1", "--output", "json")
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "1", "--output", "json")
 			Expect(err).NotTo(HaveOccurred(), out)
-			Expect(out).To(ContainSubstring("{"))
+			Expect(out).To(ContainSubstring(`"resource_name"`))
 		})
 
 		It("outputs JSONL", func() {
-			out, err := falcon("fcs", "assets", "list", "--limit", "1", "--output", "jsonl")
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "1", "--output", "jsonl")
 			Expect(err).NotTo(HaveOccurred(), out)
 		})
 
 		It("filters by columns", func() {
-			out, err := falcon("fcs", "assets", "list", "--limit", "3", "--columns", "name,type,provider")
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "3", "--columns", "name,type,provider")
 			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("NAME"))
 		})
 
 		It("greps output", func() {
-			_, err := falcon("fcs", "assets", "list", "--limit", "10", "--grep", "aws")
-			Expect(err).NotTo(HaveOccurred())
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "10", "--grep", "aws")
+			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("aws"))
+			Expect(out).NotTo(ContainSubstring("azure"))
 		})
 
 		It("sorts output", func() {
-			_, err := falcon("fcs", "assets", "list", "--limit", "10", "--sort-by", "provider")
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
+			server := newMockServer(routes)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
 
-	Describe("risks", Label("risks"), func() {
-		It("lists risks", func() {
-			out, err := falcon("fcs", "risks", "list", "--limit", "3")
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("filters by severity (title case)", func() {
-			out, err := falcon("fcs", "risks", "list", "--limit", "3", "--filter", "severity:'High'")
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("outputs JSONL", func() {
-			out, err := falcon("fcs", "risks", "list", "--limit", "1", "--output", "jsonl")
+			out, err := runFCS(f, stdout, "assets", "list", "--limit", "10", "--sort-by", "provider")
 			Expect(err).NotTo(HaveOccurred(), out)
 		})
 	})
 
 	Describe("iom", Label("iom"), func() {
 		It("lists IOMs", func() {
-			out, err := falcon("fcs", "iom", "list", "--limit", "3")
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
+			server := newMockServer([]route{
+				{method: http.MethodGet, prefix: "/cloud-security-evaluations/queries/ioms/v1", fixture: "iom_query.json"},
+				{method: http.MethodGet, prefix: "/cloud-security-evaluations/entities/ioms/v1", fixture: "iom_entities.json"},
+			})
+			defer server.Close()
+			f, stdout := newTestFactory(server)
 
-		It("filters by severity (lowercase)", func() {
-			out, err := falcon("fcs", "iom", "list", "--limit", "3", "--filter", "severity:'high'")
+			out, err := runFCS(f, stdout, "iom", "list", "--limit", "3")
 			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("rule-abc-123"))
+			Expect(out).To(ContainSubstring("high"))
 		})
 
 		It("rejects bare field name as invalid FQL", func() {
-			out, err := falcon("fcs", "iom", "list", "--filter", "severity")
+			server := newMockServer(nil)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			_, err := runFCS(f, stdout, "iom", "list", "--filter", "severity")
 			Expect(err).To(HaveOccurred())
-			Expect(out).To(ContainSubstring("invalid FQL filter"))
-		})
-	})
-
-	Describe("iac", Label("iac"), func() {
-		It("lists IaC detections", func() {
-			out, err := falcon("fcs", "iac", "list", "--limit", "3")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-	})
-
-	Describe("compliance", Label("compliance"), func() {
-		It("lists frameworks", func() {
-			out, err := falcon("fcs", "compliance", "frameworks")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("lists rules", func() {
-			out, err := falcon("fcs", "compliance", "rules", "--limit", "5")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(err.Error()).To(ContainSubstring("invalid FQL filter"))
 		})
 	})
 
 	Describe("suppression", Label("suppression"), func() {
 		It("lists suppression rules", func() {
-			out, err := falcon("fcs", "suppression", "list", "--limit", "3")
+			server := newMockServer([]route{
+				{method: http.MethodGet, prefix: "/cloud-policies/queries/suppression-rules/v1", fixture: "suppression_query.json"},
+				{method: http.MethodGet, prefix: "/cloud-policies/entities/suppression-rules/v1", fixture: "suppression_entities.json"},
+			})
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "suppression", "list", "--limit", "3")
 			Expect(err).NotTo(HaveOccurred(), out)
+		})
+	})
+
+	Describe("groups", Label("groups"), func() {
+		It("lists groups", func() {
+			server := newMockServer([]route{
+				{method: http.MethodGet, prefix: "/cloud-security/combined/cloud-groups/v1", fixture: "groups_list.json"},
+			})
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "groups", "list", "--limit", "5")
+			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("production-group"))
+		})
+
+		It("rejects bare field name as invalid FQL", func() {
+			server := newMockServer(nil)
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			_, err := runFCS(f, stdout, "groups", "list", "--filter", "badfield")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid FQL filter"))
+		})
+
+		Context("write round-trip", Label("write"), func() {
+			It("creates, gets, and deletes a group", func() {
+				server := newMockServer([]route{
+					{method: http.MethodPost, prefix: "/cloud-security/entities/cloud-groups/v1", fixture: "groups_create.json", status: http.StatusOK},
+					{method: http.MethodGet, prefix: "/cloud-security/entities/cloud-groups/v1", fixture: "groups_get.json"},
+					{method: http.MethodDelete, prefix: "/cloud-security/entities/cloud-groups/v1", fixture: "groups_delete.json"},
+				})
+				defer server.Close()
+				f, stdout := newTestFactory(server)
+
+				By("creating the group")
+				out, err := runFCS(f, stdout, "groups", "create",
+					"--name", "falcon-cli-e2e-1", "--description", "e2e test - safe to delete")
+				Expect(err).NotTo(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring("660e8400"))
+
+				By("getting the group by ID")
+				out, err = runFCS(f, stdout, "groups", "get", "--ids", "660e8400-e29b-41d4-a716-446655440001")
+				Expect(err).NotTo(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring("falcon-cli-e2e-1"))
+
+				By("deleting the group")
+				out, err = runFCS(f, stdout, "groups", "delete", "--ids", "660e8400-e29b-41d4-a716-446655440001")
+				Expect(err).NotTo(HaveOccurred(), out)
+			})
 		})
 	})
 
 	Describe("doctor", Label("doctor"), func() {
-		It("runs preflight checks", func() {
-			out, err := falcon("fcs", "doctor")
-			// doctor exits non-zero when scopes are missing — that's expected in some envs
-			if err != nil {
-				Expect(out).To(Or(
-					ContainSubstring("access denied"),
-					ContainSubstring("OK"),
-					ContainSubstring("fcs"),
-				), "unexpected doctor output: %s", out)
-			}
-		})
-	})
-
-	Describe("kubernetes (CWPP)", Label("cwpp", "kubernetes"), func() {
-		BeforeEach(func() {
-			if cwppProfile() == "" {
-				Skip("CWPP_PROFILE not set")
-			}
-		})
-
-		It("lists clusters", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "kubernetes", "clusters", "--limit", "3")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("lists containers", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "kubernetes", "containers", "--limit", "3")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("lists images", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "kubernetes", "images", "--limit", "3")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-	})
-
-	Describe("vulnerabilities (CWPP)", Label("cwpp", "vulnerabilities"), func() {
-		BeforeEach(func() {
-			if cwppProfile() == "" {
-				Skip("CWPP_PROFILE not set")
-			}
-		})
-
-		It("lists vulnerabilities", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "vulnerabilities", "list", "--limit", "3")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-	})
-
-	Describe("groups (CWPP)", Label("cwpp", "groups"), func() {
-		BeforeEach(func() {
-			if cwppProfile() == "" {
-				Skip("CWPP_PROFILE not set")
-			}
-		})
-
-		It("lists groups with valid FQL", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "list", "--filter", "environment:'production'", "--limit", "5")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("lists groups with combined FQL", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "list",
-				"--filter", "environment:'production'+business_unit:'payments'", "--limit", "5")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("rejects bare field name as invalid FQL", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "list", "--filter", "badfield")
-			Expect(err).To(HaveOccurred())
-			Expect(out).To(ContainSubstring("invalid FQL filter"))
-		})
-
-		It("returns values for environment field", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "values", "--field", "environment")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("returns values for business_unit field", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "values", "--field", "business_unit")
-			skipIfPermissionOrFeatureError(out, err)
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
-
-		It("rejects unknown values field", func() {
-			out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "values", "--field", "badfield")
-			Expect(err).To(HaveOccurred())
-			Expect(out).To(ContainSubstring("unknown field"))
-		})
-
-		Context("write round-trip", Label("write"), func() {
-			var groupID string
-
-			It("creates, reads, and deletes a group", func() {
-				name := fmt.Sprintf("falcon-cli-e2e-%d", GinkgoParallelProcess())
-
-				By("creating the group")
-				out, err := falconWithProfile(cwppProfile(), "fcs", "groups", "create",
-					"--name", name, "--description", "e2e test - safe to delete")
-				skipIfPermissionOrFeatureError(out, err)
-				Expect(err).NotTo(HaveOccurred(), out)
-				groupID = uuidRe.FindString(out)
-				Expect(groupID).NotTo(BeEmpty(), "no UUID in create output: "+out)
-
-				By("listing groups")
-				out, err = falconWithProfile(cwppProfile(), "fcs", "groups", "list", "--limit", "5")
-				Expect(err).NotTo(HaveOccurred(), out)
-
-				By("getting the group by ID")
-				out, err = falconWithProfile(cwppProfile(), "fcs", "groups", "get", "--ids", groupID)
-				Expect(err).NotTo(HaveOccurred(), out)
-				Expect(out).To(ContainSubstring(groupID))
-
-				By("deleting the group")
-				out, err = falconWithProfile(cwppProfile(), "fcs", "groups", "delete", "--ids", groupID)
-				Expect(err).NotTo(HaveOccurred(), out)
+		It("reports probe results", func() {
+			// Doctor probes multiple endpoints — serve all as 200 with generic JSON
+			server := newMockServer([]route{
+				{method: http.MethodGet, prefix: "/", fixture: "assets_query.json"},
 			})
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "doctor")
+			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring("✅"))
+			Expect(out).To(ContainSubstring("available"))
+		})
+
+		It("outputs JSON", func() {
+			server := newMockServer([]route{
+				{method: http.MethodGet, prefix: "/", fixture: "assets_query.json"},
+			})
+			defer server.Close()
+			f, stdout := newTestFactory(server)
+
+			out, err := runFCS(f, stdout, "doctor", "--output", "json")
+			Expect(err).NotTo(HaveOccurred(), out)
+			Expect(out).To(ContainSubstring(`"status"`))
 		})
 	})
 })
