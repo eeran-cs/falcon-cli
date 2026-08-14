@@ -2,8 +2,10 @@ version: "2"
 linters:
   enable:
     - copyloopvar
+    - dupl
     - durationcheck
     - errcheck
+    - errorlint
     - forcetypeassert
     - ineffassign
     - godot
@@ -12,7 +14,9 @@ linters:
     - makezero
     - misspell
     - nilerr
+    - nilaway
     - predeclared
+    - revive
     - sloglint
     - staticcheck
     - unconvert
