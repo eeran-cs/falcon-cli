@@ -108,5 +108,5 @@ func (s *IOStreams) IsStdinTTY() bool {
 }
 
 func isTerminal(f *os.File) bool {
-	return term.IsTerminal(int(f.Fd()))
+	return term.IsTerminal(int(f.Fd())) //nolint:gosec // file descriptor always fits in int
 }

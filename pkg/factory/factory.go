@@ -63,7 +63,7 @@ func falconClientFunc(f *Factory, appVersion string) func() (*client.CrowdStrike
 			return nil, err
 		}
 
-		client, err := falcon.NewClient(cfg.ApiConfig(appVersion))
+		client, err := falcon.NewClient(cfg.APIConfig(appVersion))
 		return client, err
 	}
 }

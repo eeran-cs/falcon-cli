@@ -45,19 +45,19 @@ var (
     `)
 )
 
-type RootOptions struct {
+type Options struct {
 	IO     *iostreams.IOStreams
 	Config config.Config
 }
 
 // NewCmdRoot represents the base command when called without any subcommands.
-func NewCmdRoot(f *factory.Factory, version string) *cobra.Command {
+func NewCmdRoot(f *factory.Factory, _ string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "falcon <command> <subcommand> [flags]",
 		Short: shortDesc,
 		Long:  longDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := &RootOptions{
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			opts := &Options{
 				IO: f.IOStreams,
 			}
 
@@ -94,9 +94,9 @@ func NewCmdRoot(f *factory.Factory, version string) *cobra.Command {
 	return cmd
 }
 
-func runRoot(cmd *cobra.Command, opts *RootOptions) error {
+func runRoot(cmd *cobra.Command, opts *Options) error {
 	if cmd.Flags().Changed("version") {
-		_, err := fmt.Fprint(opts.IO.Out, version.VersionString())
+		_, err := fmt.Fprint(opts.IO.Out, version.String())
 		return err
 	}
 

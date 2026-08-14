@@ -32,12 +32,12 @@ func TestVersion(t *testing.T) {
 	Version = "1.2.3"
 	GitVersion = "4.5.6"
 	GitCommit = "7.8.9"
-	got := VersionString()
+	got := String()
 	want := fmt.Sprintf("falcon version: %q, commit: %q, go version: %q, GOOS: %q, GOARCH: %q",
 		"4.5.6", "7.8.9", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("VersionString() mismatch (-want +got):\n%s", diff)
+		t.Errorf("String() mismatch (-want +got):\n%s", diff)
 	}
 
 }

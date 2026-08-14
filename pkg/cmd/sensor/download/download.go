@@ -36,7 +36,7 @@ var (
 )
 
 // NewCmdDownload represents the download command.
-func NewCmdDownload(f *factory.Factory) *cobra.Command {
+func NewCmdDownload(_ *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "download",
 		Short:   shortDesc,
@@ -47,6 +47,6 @@ func NewCmdDownload(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
-func runDownload(cmd *cobra.Command, args []string) error {
+func runDownload(_ *cobra.Command, _ []string) error {
 	return nil
 }

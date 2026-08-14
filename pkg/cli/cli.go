@@ -50,7 +50,7 @@ func Run() error {
 		fmt.Fprintf(stderr, "Error loading config: %v", err)
 	}
 
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		err := initConfig(cmd)
 		if err != nil {
 			return err
@@ -104,7 +104,8 @@ func initConfig(cmd *cobra.Command) error {
 	}
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		var cfgErr viper.ConfigFileNotFoundError
+		if !errors.As(err, &cfgErr) {
 			return fmt.Errorf("reading config file: %w", err)
 		}
 	}

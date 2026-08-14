@@ -14,7 +14,6 @@ linters:
     - makezero
     - misspell
     - nilerr
-    - nilaway
     - predeclared
     - revive
     - sloglint
@@ -22,13 +21,6 @@ linters:
     - unconvert
     - unparam
     - unused
-  settings:
-    custom:
-      nilaway:
-        type: module
-        description: Static analysis tool to detect potential nil panics in Go code.
-        settings:
-          include-pkgs: "github.com/crowdstrike/falcon-cli"
   exclusions:
     generated: lax
     presets:

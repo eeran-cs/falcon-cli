@@ -35,7 +35,7 @@ import (
 
 var falconClouds = []string{"autodiscover", "us-1", "us-2", "eu-1", "us-gov-1"}
 
-type ConfigOptions struct {
+type Options struct {
 	IO          *iostreams.IOStreams
 	Config      config.Config
 	Interactive bool
@@ -44,7 +44,7 @@ type ConfigOptions struct {
 }
 
 func NewCmdConfig(f *factory.Factory) *cobra.Command {
-	opts := &ConfigOptions{
+	opts := &Options{
 		IO: f.IOStreams,
 	}
 
@@ -56,7 +56,7 @@ func NewCmdConfig(f *factory.Factory) *cobra.Command {
 		`),
 		Aliases: []string{"login", "init"},
 		Args:    cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := f.Config()
 			if err != nil {
 				return err
@@ -83,7 +83,7 @@ func NewCmdConfig(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
-func configRun(opts *ConfigOptions) error {
+func configRun(opts *Options) error {
 	var qs = []*survey.Question{
 		{
 			Name: "clientId",
