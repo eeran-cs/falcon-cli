@@ -1,0 +1,6 @@
+# golangci-lint >= v1.57.0 is required for module plugin support.
+version: v1.57.0
+plugins:
+  - module: "go.uber.org/nilaway"
+    import: "go.uber.org/nilaway/cmd/gclplugin"
+    version: latest
