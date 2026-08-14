@@ -196,5 +196,3 @@ func FirstLine(s string) string {
 	return s
 }
 
-// firstLine is the unexported alias kept for internal use.
-func firstLine(s string) string { return FirstLine(s) }

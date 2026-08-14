@@ -273,10 +273,10 @@ func classifyErr(err error) probeStatus {
 	}
 	var apiErr *runtime.APIError
 	if errors.As(err, &apiErr) {
-		switch {
-		case apiErr.Code == 403:
+		switch apiErr.Code {
+		case 403:
 			return probeAccessDenied
-		case apiErr.Code == 404:
+		case 404:
 			return probeNotFound
 		}
 	}

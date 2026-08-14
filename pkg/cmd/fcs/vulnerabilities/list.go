@@ -46,11 +46,11 @@ var vulnTableDef = &output.TableDefinition{
 		}
 		images := ""
 		if r.ImagesImpacted != nil {
-			images = strconv.FormatInt(int64(*r.ImagesImpacted), 10)
+			images = strconv.FormatInt(*r.ImagesImpacted, 10)
 		}
 		containers := ""
 		if r.ContainersImpacted != nil {
-			containers = strconv.FormatInt(int64(*r.ContainersImpacted), 10)
+			containers = strconv.FormatInt(*r.ContainersImpacted, 10)
 		}
 		remediation := "false"
 		if r.RemediationAvailable != nil && *r.RemediationAvailable {
