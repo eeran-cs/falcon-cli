@@ -162,3 +162,4 @@ func authHelp() string {
 		For more information, run: 'falcon auth config --help'
 		`)
 }
+
