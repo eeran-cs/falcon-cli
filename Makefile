@@ -50,8 +50,8 @@ test: fmt vet ## Run unit tests with the race detector and coverage.
 	go test -race $(shell go list ./... | grep -v /test/e2e) -coverprofile cover.out
 
 .PHONY: test-e2e
-test-e2e: build ## Run live e2e tests against a real Falcon tenant (needs FALCON_CLIENT_ID/SECRET; LOG_RESULTS=1 to log returned records).
-	FALCON_BIN=$(PWD)/$(BINARY) go test -race -count=1 -v ./test/e2e/... -args -ginkgo.vv $(if $(GINKGO_LABEL_FILTER),-ginkgo.label-filter='$(GINKGO_LABEL_FILTER)')
+test-e2e: ## Run live e2e tests against a real Falcon tenant (needs FALCON_CLIENT_ID/SECRET; LOG_RESULTS=1 to log returned records).
+	go test -race -count=1 -v ./test/e2e/... -args -ginkgo.vv $(if $(GINKGO_LABEL_FILTER),-ginkgo.label-filter='$(GINKGO_LABEL_FILTER)')
 
 .PHONY: license
 license: addlicense ## Run addlicense to add license headers to source code.
