@@ -33,9 +33,9 @@ import (
 	"strings"
 	"testing"
 
+	openapi "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
-	openapi "github.com/go-openapi/runtime"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 

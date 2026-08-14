@@ -195,4 +195,3 @@ func FirstLine(s string) string {
 	}
 	return s
 }
-
