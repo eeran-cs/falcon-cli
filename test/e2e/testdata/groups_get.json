@@ -1,0 +1,9 @@
+{
+  "resources": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "name": "falcon-cli-e2e-1",
+      "description": "e2e test - safe to delete"
+    }
+  ]
+}

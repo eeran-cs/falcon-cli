@@ -1,4 +1,4 @@
-// Copyright (c) 2022 CrowdStrike, Inc.
+// Copyright (c) 2026 CrowdStrike, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/auth"
+	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/sensor"
 	versionCmd "github.com/crowdstrike/falcon-cli/pkg/cmd/version"
 	"github.com/crowdstrike/falcon-cli/pkg/config"
@@ -70,7 +71,7 @@ func NewCmdRoot(f *factory.Factory, version string) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().String("config", "", "config file (default is $HOME/.falcon/falcon.yaml)")
+	cmd.PersistentFlags().String("config", "", "config file (default is $HOME/.falcon/config.yaml)")
 	cmd.PersistentFlags().Bool("verbose", false, "Enable verbose logging")
 	cmd.PersistentFlags().Bool("version", false, "Show version")
 	cmd.PersistentFlags().Bool("help", false, "Show help for command")
@@ -79,12 +80,14 @@ func NewCmdRoot(f *factory.Factory, version string) *cobra.Command {
 	cmd.PersistentFlags().StringP("client-secret", "s", "", "The Falcon API Oauth client secret")
 	cmd.PersistentFlags().StringP("member-cid", "m", "", "The Falcon API member CID")
 	cmd.PersistentFlags().StringP("cloud", "r", "autodiscover", "The Falcon API Cloud Region")
+	cmd.PersistentFlags().String("base-url", "", "Override the Falcon API base URL (e.g. https://api.crowdstrike.com)")
 	cmd.PersistentFlags().StringP("profile", "p", "default", "Use a specific profile from your config file")
 
 	// Add subcommands
 	cmd.AddCommand(versionCmd.NewCmdVersion(f))
 	cmd.AddCommand(sensor.NewSensorCmd(f))
 	cmd.AddCommand(auth.NewAuthCmd(f))
+	cmd.AddCommand(fcs.NewFCSCmd(f))
 
 	utils.DisableAuthCheck(cmd)
 

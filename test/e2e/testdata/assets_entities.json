@@ -1,0 +1,28 @@
+{
+  "resources": [
+    {
+      "id": "asset-001",
+      "resource_name": "my-ec2-instance",
+      "resource_type": "ec2:instance",
+      "cloud_provider": "aws",
+      "region": "us-east-1",
+      "account_id": "123456789012"
+    },
+    {
+      "id": "asset-002",
+      "resource_name": "my-storage-account",
+      "resource_type": "storage:account",
+      "cloud_provider": "azure",
+      "region": "eastus",
+      "account_id": "sub-abc-123"
+    },
+    {
+      "id": "asset-003",
+      "resource_name": "my-gke-cluster",
+      "resource_type": "container:cluster",
+      "cloud_provider": "gcp",
+      "region": "us-central1",
+      "account_id": "proj-12345"
+    }
+  ]
+}

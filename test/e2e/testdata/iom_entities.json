@@ -1,0 +1,14 @@
+{
+  "resources": [
+    {
+      "id": "iom-001",
+      "evaluation": {
+        "severity": "high",
+        "status": "open",
+        "created": "2025-06-01T12:00:00Z",
+        "rule": {"id": "rule-abc-123"}
+      },
+      "resource": {"resource_id": "arn:aws:s3:::my-bucket"}
+    }
+  ]
+}

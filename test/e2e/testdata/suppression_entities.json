@@ -1,0 +1,12 @@
+{
+  "resources": [
+    {
+      "id": "supp-001",
+      "rule_name": "Allow public S3",
+      "suppression_reason": "false_positive",
+      "domain": "cspm",
+      "status": "active"
+    }
+  ],
+  "meta": {"pagination": {"total": 1}}
+}

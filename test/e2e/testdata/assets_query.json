@@ -1,0 +1,4 @@
+{
+  "resources": ["asset-001", "asset-002", "asset-003"],
+  "meta": {"pagination": {"total": 3}}
+}

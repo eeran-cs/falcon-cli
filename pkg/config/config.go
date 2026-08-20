@@ -1,4 +1,4 @@
-// Copyright (c) 2022 CrowdStrike, Inc.
+// Copyright (c) 2026 CrowdStrike, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/crowdstrike/falcon-cli/pkg/version"
 	"github.com/crowdstrike/gofalcon/falcon"
@@ -41,6 +42,8 @@ type Config struct {
 	MemberCID string `yaml:"member_cid,omitempty"`
 	// The Falcon API cloud region.
 	Cloud string `yaml:"cloud,omitempty"`
+	// BaseURL overrides the Falcon API host (e.g. https://api.eu-1.crowdstrike.com).
+	BaseURL string `yaml:"base_url,omitempty"`
 	// The OAuth token returned from the Falcon API.
 	OauthToken string `yaml:"oauth_token,omitempty"`
 	// The Container Registry OAuth token returned from the Falcon API.
@@ -65,19 +68,29 @@ func NewConfig() (Config, error) {
 	c.ClientSecret = getViperKey("client_secret", profile)
 	c.MemberCID = getViperKey("member_cid", profile)
 	c.Cloud = getViperKey("cloud", profile)
+	c.BaseURL = getViperKey("base_url", profile)
 
 	return *c, nil
 }
 
 func (c Config) ApiConfig(appVersion string) *falcon.ApiConfig {
-	return &falcon.ApiConfig{
+	cfg := &falcon.ApiConfig{
 		ClientId:          c.ClientID,
 		ClientSecret:      c.ClientSecret,
 		MemberCID:         c.MemberCID,
 		Cloud:             falcon.Cloud(c.Cloud),
 		Context:           context.Background(),
 		UserAgentOverride: fmt.Sprintf("falcon-cli/%s", version.Version),
+		Debug:             viper.GetViper().GetBool("verbose"),
 	}
+	if c.BaseURL != "" {
+		if u, err := url.Parse(c.BaseURL); err == nil && u.Host != "" {
+			cfg.HostOverride = u.Host
+		} else {
+			cfg.HostOverride = c.BaseURL
+		}
+	}
+	return cfg
 }
 
 func getViperKey(key string, profile string) string {
