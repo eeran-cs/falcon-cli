@@ -73,7 +73,7 @@ func NewConfig() (Config, error) {
 	return *c, nil
 }
 
-func (c Config) ApiConfig(appVersion string) *falcon.ApiConfig {
+func (c Config) APIConfig(_ string) *falcon.ApiConfig {
 	cfg := &falcon.ApiConfig{
 		ClientId:          c.ClientID,
 		ClientSecret:      c.ClientSecret,

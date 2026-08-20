@@ -60,7 +60,7 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
             # Sort and limit results
             falcon fcs risks list --sort "severity.desc" --limit 50
         `),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runList(opts)
 		},
 	}

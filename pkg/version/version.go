@@ -31,7 +31,7 @@ var (
 	GitCommit  = "unknown"
 )
 
-func VersionString() string {
+func String() string {
 	version := GitVersion
 	if version == "unknown" {
 		version = Version

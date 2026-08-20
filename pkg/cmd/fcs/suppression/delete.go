@@ -41,7 +41,7 @@ func NewCmdDelete(f *factory.Factory) *cobra.Command {
             # Delete a suppression rule
             falcon fcs suppression delete --ids <id>
         `),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			falconClient, err := f.FalconClient()
 			if err != nil {
 				return err
