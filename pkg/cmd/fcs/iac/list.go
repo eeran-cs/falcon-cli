@@ -82,7 +82,7 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
             # Grep for terraform findings
             falcon fcs iac list --grep terraform
         `),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			falconClient, err := f.FalconClient()
 			if err != nil {
 				return err

@@ -21,6 +21,13 @@ linters:
     - unconvert
     - unparam
     - unused
+  settings:
+    dupl:
+      threshold: 200
+    revive:
+      rules:
+        - name: dot-imports
+          disabled: true
   exclusions:
     generated: lax
     presets:
@@ -28,6 +35,9 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      - linters: [dupl]
+        path: pkg/cmd/fcs/kubernetes/
     paths:
       - third_party$
       - builtin$
