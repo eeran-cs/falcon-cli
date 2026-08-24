@@ -18,56 +18,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package compliance
+package registration
 
 import (
-	"strconv"
-
-	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	shortDesc = `Inspect cloud compliance posture`
-	longDesc  = templates.LongDesc(`
-        Inspect cloud compliance posture across frameworks and individual rules.`)
-	examples = templates.Examples(`
-        # Show posture summaries for all compliance frameworks
-        falcon fcs compliance frameworks
-
-        # Show posture summaries for individual compliance rules
-        falcon fcs compliance rules
-    `)
-)
-
-// NewComplianceCmd represents the compliance command group.
-func NewComplianceCmd(f *factory.Factory) *cobra.Command {
+// NewRegistrationCmd represents the fcs registration command group.
+func NewRegistrationCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "compliance",
-		Short:   shortDesc,
-		Long:    longDesc,
-		Example: examples,
+		Use:   "registration",
+		Short: "Manage cloud account registrations",
+		Long: templates.LongDesc(`
+            Manage Falcon Cloud Security cloud account registrations.
+            Register, update, and remove AWS, Azure, GCP, and OCI accounts.`),
+		Example: templates.Examples(`
+            # List AWS accounts
+            falcon fcs registration aws list
+
+            # Register a new AWS account
+            falcon fcs registration aws create --account-id 123456789012
+
+            # Delete an AWS account registration
+            falcon fcs registration aws delete --ids <id>
+        `),
 	}
 
 	cmd.AddCommand(
-		NewCmdFrameworks(f),
-		NewCmdRules(f),
-		NewCmdControls(f),
+		NewAWSCmd(f),
+		NewAzureCmd(f),
+		NewGCPCmd(f),
+		NewOCICmd(f),
 	)
 	return cmd
-}
-
-func str(p *string) string { return cmdutil.Deref(p) }
-
-func i32(v int32) string {
-	return strconv.FormatInt(int64(v), 10)
-}
-
-func i32p(p *int32) string {
-	if p == nil {
-		return ""
-	}
-	return i32(*p)
 }

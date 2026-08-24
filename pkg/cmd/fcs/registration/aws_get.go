@@ -18,56 +18,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package compliance
+package registration
 
 import (
-	"strconv"
-
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/falcon-cli/pkg/output"
+	"github.com/crowdstrike/gofalcon/falcon/client/cloud_aws_registration"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	shortDesc = `Inspect cloud compliance posture`
-	longDesc  = templates.LongDesc(`
-        Inspect cloud compliance posture across frameworks and individual rules.`)
-	examples = templates.Examples(`
-        # Show posture summaries for all compliance frameworks
-        falcon fcs compliance frameworks
+// NewCmdAWSGet represents the fcs registration aws get command.
+func NewCmdAWSGet(f *factory.Factory) *cobra.Command {
+	var ids []string
+	var out string
 
-        # Show posture summaries for individual compliance rules
-        falcon fcs compliance rules
-    `)
-)
-
-// NewComplianceCmd represents the compliance command group.
-func NewComplianceCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "compliance",
-		Short:   shortDesc,
-		Long:    longDesc,
-		Example: examples,
+		Use:   "get",
+		Short: "Get AWS accounts by ID",
+		Long:  templates.LongDesc(`Get one or more registered AWS accounts by their account IDs.`),
+		Example: templates.Examples(`
+            # Get a specific AWS account
+            falcon fcs registration aws get --ids 123456789012
+        `),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			client, err := f.FalconClient()
+			if err != nil {
+				return err
+			}
+
+			params := cloud_aws_registration.NewCloudRegistrationAwsGetAccountsParams()
+			params.Ids = ids
+
+			resp, _, err := client.CloudAwsRegistration.CloudRegistrationAwsGetAccounts(params)
+			if err != nil {
+				return cmdutil.HandleAPIError(err, "get AWS accounts")
+			}
+
+			printer := output.NewPrinter(output.Format(out), awsAccountTableDef)
+			if resp == nil || resp.Payload == nil {
+				return printer.Print(f.IOStreams.Out, nil)
+			}
+			return printer.Print(f.IOStreams.Out, resp.Payload.Resources)
+		},
 	}
 
-	cmd.AddCommand(
-		NewCmdFrameworks(f),
-		NewCmdRules(f),
-		NewCmdControls(f),
-	)
+	cmdutil.AddIDsFlag(cmd, &ids, true)
+	cmdutil.AddOutputFlag(cmd, &out)
 	return cmd
-}
-
-func str(p *string) string { return cmdutil.Deref(p) }
-
-func i32(v int32) string {
-	return strconv.FormatInt(int64(v), 10)
-}
-
-func i32p(p *int32) string {
-	if p == nil {
-		return ""
-	}
-	return i32(*p)
 }

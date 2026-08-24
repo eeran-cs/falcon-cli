@@ -18,56 +18,52 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package compliance
+package policies
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/gofalcon/falcon/client/cloud_policies"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	shortDesc = `Inspect cloud compliance posture`
-	longDesc  = templates.LongDesc(`
-        Inspect cloud compliance posture across frameworks and individual rules.`)
-	examples = templates.Examples(`
-        # Show posture summaries for all compliance frameworks
-        falcon fcs compliance frameworks
+// NewCmdRulesDelete represents the fcs policies rules delete command.
+func NewCmdRulesDelete(f *factory.Factory) *cobra.Command {
+	var ids []string
 
-        # Show posture summaries for individual compliance rules
-        falcon fcs compliance rules
-    `)
-)
-
-// NewComplianceCmd represents the compliance command group.
-func NewComplianceCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "compliance",
-		Short:   shortDesc,
-		Long:    longDesc,
-		Example: examples,
+		Use:   "delete",
+		Short: "Delete policy rules",
+		Long:  templates.LongDesc(`Delete one or more Falcon Cloud Security policy rules by UUID.`),
+		Example: templates.Examples(`
+            # Delete a rule
+            falcon fcs policies rules delete --ids <uuid>
+
+            # Delete multiple rules
+            falcon fcs policies rules delete --ids <uuid1>,<uuid2>
+        `),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			client, err := f.FalconClient()
+			if err != nil {
+				return err
+			}
+
+			params := cloud_policies.NewDeleteRuleMixin0Params()
+			params.Ids = ids
+
+			_, err = client.CloudPolicies.DeleteRuleMixin0(params)
+			if err != nil {
+				return cmdutil.HandleAPIError(err, "delete policy rules")
+			}
+
+			fmt.Fprintf(f.IOStreams.Out, "Deleted %d rule(s)\n", len(ids))
+			return nil
+		},
 	}
 
-	cmd.AddCommand(
-		NewCmdFrameworks(f),
-		NewCmdRules(f),
-		NewCmdControls(f),
-	)
+	cmdutil.AddIDsFlag(cmd, &ids, true)
 	return cmd
-}
-
-func str(p *string) string { return cmdutil.Deref(p) }
-
-func i32(v int32) string {
-	return strconv.FormatInt(int64(v), 10)
-}
-
-func i32p(p *int32) string {
-	if p == nil {
-		return ""
-	}
-	return i32(*p)
 }

@@ -18,56 +18,49 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package compliance
+package registration
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/gofalcon/falcon/client/cloud_aws_registration"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	shortDesc = `Inspect cloud compliance posture`
-	longDesc  = templates.LongDesc(`
-        Inspect cloud compliance posture across frameworks and individual rules.`)
-	examples = templates.Examples(`
-        # Show posture summaries for all compliance frameworks
-        falcon fcs compliance frameworks
+// NewCmdAWSDelete represents the fcs registration aws delete command.
+func NewCmdAWSDelete(f *factory.Factory) *cobra.Command {
+	var ids []string
 
-        # Show posture summaries for individual compliance rules
-        falcon fcs compliance rules
-    `)
-)
-
-// NewComplianceCmd represents the compliance command group.
-func NewComplianceCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "compliance",
-		Short:   shortDesc,
-		Long:    longDesc,
-		Example: examples,
+		Use:   "delete",
+		Short: "Delete AWS account registrations",
+		Long:  templates.LongDesc(`Delete one or more AWS account registrations from Falcon Cloud Security.`),
+		Example: templates.Examples(`
+            # Delete an AWS account registration
+            falcon fcs registration aws delete --ids 123456789012
+        `),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			client, err := f.FalconClient()
+			if err != nil {
+				return err
+			}
+
+			params := cloud_aws_registration.NewCloudRegistrationAwsDeleteAccountParams()
+			params.Ids = ids
+
+			_, _, err = client.CloudAwsRegistration.CloudRegistrationAwsDeleteAccount(params)
+			if err != nil {
+				return cmdutil.HandleAPIError(err, "delete AWS account registration")
+			}
+
+			fmt.Fprintf(f.IOStreams.Out, "Deleted %d AWS account registration(s)\n", len(ids))
+			return nil
+		},
 	}
 
-	cmd.AddCommand(
-		NewCmdFrameworks(f),
-		NewCmdRules(f),
-		NewCmdControls(f),
-	)
+	cmdutil.AddIDsFlag(cmd, &ids, true)
 	return cmd
-}
-
-func str(p *string) string { return cmdutil.Deref(p) }
-
-func i32(v int32) string {
-	return strconv.FormatInt(int64(v), 10)
-}
-
-func i32p(p *int32) string {
-	if p == nil {
-		return ""
-	}
-	return i32(*p)
 }
