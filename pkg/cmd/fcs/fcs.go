@@ -25,8 +25,11 @@ import (
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/compliance"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/groups"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/iac"
+	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/imageassessment"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/iom"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/kubernetes"
+	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/policies"
+	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/registration"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/risks"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/suppression"
 	"github.com/crowdstrike/falcon-cli/pkg/cmd/fcs/vulnerabilities"
@@ -53,6 +56,9 @@ func NewFCSCmd(f *factory.Factory) *cobra.Command {
 		kubernetes.NewKubernetesCmd(f),
 		vulnerabilities.NewVulnerabilitiesCmd(f),
 		iac.NewIACCmd(f),
+		imageassessment.NewImageAssessmentCmd(f),
+		policies.NewPoliciesCmd(f),
+		registration.NewRegistrationCmd(f),
 		NewCmdDoctor(f),
 	)
 	return cmd

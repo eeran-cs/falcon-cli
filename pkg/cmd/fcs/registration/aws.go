@@ -18,37 +18,68 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package kubernetes
+package registration
 
 import (
-	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
+	"github.com/crowdstrike/falcon-cli/pkg/output"
+	"github.com/crowdstrike/gofalcon/falcon/models"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-// NewKubernetesCmd represents the kubernetes command group.
-func NewKubernetesCmd(f *factory.Factory) *cobra.Command {
+// NewAWSCmd represents the fcs registration aws command group.
+func NewAWSCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "kubernetes",
-		Short: "Manage Kubernetes security resources",
-		Long:  templates.LongDesc(`Query Kubernetes containers, clusters, and images protected by Falcon.`),
+		Use:   "aws",
+		Short: "Manage AWS account registrations",
+		Long:  templates.LongDesc(`List, register, update, and delete AWS cloud account registrations.`),
 		Example: templates.Examples(`
-            # List running containers
-            falcon fcs kubernetes containers
+            # List all registered AWS accounts
+            falcon fcs registration aws list
 
-            # List clusters
-            falcon fcs kubernetes clusters
+            # Get a specific AWS account
+            falcon fcs registration aws get --ids <account-id>
         `),
 	}
 
 	cmd.AddCommand(
-		NewCmdContainers(f),
-		NewCmdClusters(f),
-		NewCmdImages(f),
-		NewCmdDetections(f),
+		NewCmdAWSList(f),
+		NewCmdAWSGet(f),
+		NewCmdAWSCreate(f),
+		NewCmdAWSUpdate(f),
+		NewCmdAWSDelete(f),
 	)
 	return cmd
 }
 
-func strp(p *string) string { return cmdutil.Deref(p) }
+var awsAccountTableDef = &output.TableDefinition{
+	Headers: []string{"ACCOUNT_ID", "ACCOUNT_NAME", "TYPE", "ENVIRONMENT", "STATUS", "CSPM"},
+	RowFunc: func(item any) []string {
+		r, ok := item.(*models.DomainCloudAWSAccountV1)
+		if !ok || r == nil {
+			return nil
+		}
+
+		status := "unknown"
+		if len(r.Conditions) > 0 && r.Conditions[0] != nil {
+			if r.Conditions[0].Feature != nil {
+				status = *r.Conditions[0].Feature
+			}
+		}
+
+		cspm := "disabled"
+		if r.CspmEnabled {
+			cspm = "enabled"
+		}
+
+		return []string{
+			r.AccountID,
+			r.AccountName,
+			r.AccountType,
+			r.Environment,
+			status,
+			cspm,
+		}
+	},
+}

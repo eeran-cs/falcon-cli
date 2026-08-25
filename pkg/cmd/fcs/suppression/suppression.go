@@ -56,7 +56,9 @@ func NewSuppressionCmd(f *factory.Factory) *cobra.Command {
 
 	cmd.AddCommand(
 		NewCmdList(f),
+		NewCmdGet(f),
 		NewCmdCreate(f),
+		NewCmdUpdate(f),
 		NewCmdDelete(f),
 	)
 	return cmd

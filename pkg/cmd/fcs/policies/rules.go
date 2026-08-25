@@ -18,56 +18,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package compliance
+package policies
 
 import (
-	"strconv"
-
-	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	shortDesc = `Inspect cloud compliance posture`
-	longDesc  = templates.LongDesc(`
-        Inspect cloud compliance posture across frameworks and individual rules.`)
-	examples = templates.Examples(`
-        # Show posture summaries for all compliance frameworks
-        falcon fcs compliance frameworks
-
-        # Show posture summaries for individual compliance rules
-        falcon fcs compliance rules
-    `)
-)
-
-// NewComplianceCmd represents the compliance command group.
-func NewComplianceCmd(f *factory.Factory) *cobra.Command {
+// NewRulesCmd represents the fcs policies rules command group.
+func NewRulesCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "compliance",
-		Short:   shortDesc,
-		Long:    longDesc,
-		Example: examples,
+		Use:   "rules",
+		Short: "Manage policy rules",
+		Long: templates.LongDesc(`
+            List, get, create, update, and delete Falcon Cloud Security policy rules.
+            Rules define the logic used to evaluate cloud resources for misconfigurations.`),
+		Example: templates.Examples(`
+            # List rules filtered by provider
+            falcon fcs policies rules list --filter "rule_provider:'AWS'"
+
+            # List rules by severity
+            falcon fcs policies rules list --filter "rule_severity:'Critical'"
+        `),
 	}
 
 	cmd.AddCommand(
-		NewCmdFrameworks(f),
-		NewCmdRules(f),
-		NewCmdControls(f),
+		NewCmdRulesList(f),
+		NewCmdRulesGet(f),
+		NewCmdRulesCreate(f),
+		NewCmdRulesUpdate(f),
+		NewCmdRulesDelete(f),
 	)
 	return cmd
-}
-
-func str(p *string) string { return cmdutil.Deref(p) }
-
-func i32(v int32) string {
-	return strconv.FormatInt(int64(v), 10)
-}
-
-func i32p(p *int32) string {
-	if p == nil {
-		return ""
-	}
-	return i32(*p)
 }
