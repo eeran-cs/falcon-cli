@@ -108,7 +108,7 @@ var featureRequirements = map[string]string{
 	"query compliance frameworks":                "CSPM Compliance posture feature (contact your Falcon admin to enable)",
 	"get compliance framework posture summaries": "CSPM Compliance posture feature (contact your Falcon admin to enable)",
 	"query compliance controls":                  "CSPM Compliance posture feature (contact your Falcon admin to enable)",
-	"get compliance rule posture summaries":       "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+	"get compliance rule posture summaries":      "CSPM Compliance posture feature (contact your Falcon admin to enable)",
 	// Legacy gofalcon operation-name keys kept for backward compatibility.
 	"CloudComplianceFrameworkPostureSummaries": "CSPM Compliance posture feature (contact your Falcon admin to enable)",
 	"CloudComplianceRulePostureSummaries":      "CSPM Compliance posture feature (contact your Falcon admin to enable)",
