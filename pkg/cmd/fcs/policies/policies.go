@@ -21,6 +21,9 @@
 package policies
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/crowdstrike/falcon-cli/pkg/output"
 	"github.com/crowdstrike/gofalcon/falcon/models"
@@ -59,7 +62,12 @@ func NewPoliciesCmd(f *factory.Factory) *cobra.Command {
 }
 
 var ruleTableDef = &output.TableDefinition{
-	Headers: []string{"UUID", "NAME", "SEVERITY", "PROVIDER", "ORIGIN", "DOMAIN", "STATUS"},
+	Headers: []string{
+		"UUID", "NAME", "SHORT_CODE", "SEVERITY", "PROVIDER", "ORIGIN",
+		"DOMAIN", "SUBDOMAIN", "SCOPE_TYPE", "DESCRIPTION", "LOGIC",
+		"LOGIC_FORMAT", "RESOURCE_TYPES", "AUTO_REMEDIABLE", "CLONEABLE",
+		"VISIBLE", "CREATED_AT", "UPDATED_AT",
+	},
 	RowFunc: func(item any) []string {
 		r, ok := item.(*models.ApimodelsRule)
 		if !ok || r == nil {
@@ -80,14 +88,52 @@ var ruleTableDef = &output.TableDefinition{
 			}
 		}
 
+		shortCode := ""
+		if r.ShortCode != nil {
+			shortCode = fmt.Sprintf("%d", *r.ShortCode)
+		}
+
+		resourceTypes := make([]string, 0, len(r.ResourceTypes))
+		for _, rt := range r.ResourceTypes {
+			if rt != nil && rt.ResourceType != nil {
+				resourceTypes = append(resourceTypes, *rt.ResourceType)
+			}
+		}
+
+		autoRemediable := ""
+		if r.AutoRemediable != nil {
+			autoRemediable = fmt.Sprintf("%v", *r.AutoRemediable)
+		}
+
+		cloneable := ""
+		if r.Cloneable != nil {
+			cloneable = fmt.Sprintf("%v", *r.Cloneable)
+		}
+
+		createdAt := ""
+		if r.CreatedAt != nil {
+			createdAt = r.CreatedAt.String()
+		}
+
 		return []string{
 			deref(r.UUID),
 			deref(r.Name),
+			shortCode,
 			severity,
 			deref(r.Provider),
 			deref(r.Origin),
 			deref(r.Domain),
 			deref(r.Subdomain),
+			deref(r.ScopeType),
+			deref(r.Description),
+			r.Logic,
+			r.LogicFormat,
+			strings.Join(resourceTypes, ","),
+			autoRemediable,
+			cloneable,
+			fmt.Sprintf("%v", r.Visible),
+			createdAt,
+			r.UpdatedAt.String(),
 		}
 	},
 }

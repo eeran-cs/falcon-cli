@@ -46,7 +46,7 @@ type TableDefinition struct {
 type TableOptions struct {
 	// NoTruncate disables column truncation (default: truncate to MaxColWidth).
 	NoTruncate bool
-	// MaxColWidth is the maximum character width per column (0 = use default 50).
+	// MaxColWidth is the maximum character width per column (0 = unlimited / no truncation).
 	MaxColWidth int
 	// Columns, when non-empty, restricts output to the named columns (case-insensitive).
 	Columns []string
@@ -75,7 +75,7 @@ func NewPrinter(format Format, def *TableDefinition, tableOpts ...*TableOptions)
 	} else {
 		opts = &TableOptions{}
 	}
-	if opts.MaxColWidth == 0 {
+	if opts.MaxColWidth == 0 && !opts.NoTruncate {
 		opts.MaxColWidth = 50
 	}
 

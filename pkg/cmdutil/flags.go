@@ -69,14 +69,16 @@ func AddIDsFlag(cmd *cobra.Command, p *[]string, required bool) {
 
 // TableFormattingOptions holds table rendering options populated by AddTableFormattingFlags.
 type TableFormattingOptions struct {
-	NoTruncate bool
-	Columns    string
-	NoHeaders  bool
+	NoTruncate  bool
+	Columns     string
+	NoHeaders   bool
+	MaxColWidth int
 }
 
-// AddTableFormattingFlags adds --no-truncate, --columns, and --no-headers flags.
+// AddTableFormattingFlags adds --no-truncate, --max-col-width, --columns, and --no-headers flags.
 func AddTableFormattingFlags(cmd *cobra.Command, opts *TableFormattingOptions) {
 	cmd.Flags().BoolVar(&opts.NoTruncate, "no-truncate", false, "Disable column value truncation")
+	cmd.Flags().IntVar(&opts.MaxColWidth, "max-col-width", 50, "Maximum column width before truncation (0 = unlimited)")
 	cmd.Flags().StringVar(&opts.Columns, "columns", "", "Comma-separated list of columns to display (e.g. id,name,provider)")
 	cmd.Flags().BoolVar(&opts.NoHeaders, "no-headers", false, "Suppress table header row")
 }
@@ -92,11 +94,18 @@ func (o *TableFormattingOptions) ToOutputTableOptions() *output.TableOptions {
 			}
 		}
 	}
+	maxColWidth := o.MaxColWidth
+	if maxColWidth == 0 {
+		maxColWidth = 50
+	}
+	if o.NoTruncate {
+		maxColWidth = 0
+	}
 	return &output.TableOptions{
 		NoTruncate:  o.NoTruncate,
 		Columns:     cols,
 		NoHeaders:   o.NoHeaders,
-		MaxColWidth: 50,
+		MaxColWidth: maxColWidth,
 	}
 }
 
