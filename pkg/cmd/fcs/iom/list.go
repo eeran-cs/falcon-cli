@@ -21,6 +21,7 @@
 package iom
 
 import (
+	"fmt"
 	"github.com/crowdstrike/falcon-cli/pkg/cmdutil"
 	"github.com/crowdstrike/falcon-cli/pkg/factory"
 	"github.com/crowdstrike/falcon-cli/pkg/output"
@@ -73,6 +74,11 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 }
 
 func runList(opts *listOptions) error {
+	const maxLimit = int64(100)
+	if opts.Limit > maxLimit {
+		return fmt.Errorf("--limit %d exceeds the maximum of %d for iom list", opts.Limit, maxLimit)
+	}
+
 	client, err := opts.Factory.FalconClient()
 	if err != nil {
 		return err

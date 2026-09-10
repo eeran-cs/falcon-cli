@@ -101,9 +101,25 @@ var cwppOperations = map[string]bool{
 }
 
 // featureRequirements maps operations to features that must be tenant-provisioned.
+// Keys are the human-readable operation strings passed to HandleAPIError.
 var featureRequirements = map[string]string{
+	// Compliance posture — both the ID-discovery query and the posture summary fetch
+	// return 404 when the Compliance posture feature is not provisioned.
+	"query compliance frameworks":                "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+	"get compliance framework posture summaries": "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+	"query compliance controls":                  "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+	"get compliance rule posture summaries":      "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+	// Legacy gofalcon operation-name keys kept for backward compatibility.
 	"CloudComplianceFrameworkPostureSummaries": "CSPM Compliance posture feature (contact your Falcon admin to enable)",
 	"CloudComplianceRulePostureSummaries":      "CSPM Compliance posture feature (contact your Falcon admin to enable)",
+}
+
+// filterHints provides known filter field names for APIs whose 400 responses
+// do not include a machine-readable field list. Keyed by the operation string
+// passed to HandleAPIError.
+var filterHints = map[string]string{
+	"ContainerCombined": "cluster_name, namespace, cloud, container_id, " +
+		"privileged, running_as_root, allow_privilege_escalation, image_name",
 }
 
 // HandleAPIError wraps a gofalcon API error with an actionable message.
@@ -156,6 +172,9 @@ func HandleAPIError(err error, operation string) error {
 		return fmt.Errorf("%s: resource not found (HTTP 404)", operation)
 
 	case apiErr.Code == 400:
+		if hint, ok := filterHints[operation]; ok && strings.Contains(err.Error(), "{}") {
+			return fmt.Errorf("%s: invalid filter expression\n  Known filter fields: %s", operation, hint)
+		}
 		return fmt.Errorf("%s: bad request (HTTP 400) — %s", operation, FirstLine(err.Error()))
 
 	case apiErr.Code == 429:

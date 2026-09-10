@@ -54,11 +54,16 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
             # List cloud risks
             falcon fcs risks list
 
-            # Filter by severity
+            # Filter by severity (values: Low, Medium, High, Critical — title case)
             falcon fcs risks list --filter "severity:'High'"
+            falcon fcs risks list --filter "severity:'Critical'"
 
-            # Sort and limit results
-            falcon fcs risks list --sort "severity.desc" --limit 50
+            # Filter by cloud provider — use --grep (the cloud_provider filter field is not reliable)
+            falcon fcs risks list --grep aws
+            falcon fcs risks list --output json | jq '[.[] | select(.provider == "aws")]'
+
+            # Sort descending (note: pipe separator, not dot)
+            falcon fcs risks list --sort "severity|desc" --limit 50
         `),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runList(opts)
