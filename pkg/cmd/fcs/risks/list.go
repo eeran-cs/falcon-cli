@@ -54,9 +54,9 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
             # List cloud risks
             falcon fcs risks list
 
-            # Filter by severity (values: LOW, MEDIUM, HIGH, CRITICAL — uppercase)
-            falcon fcs risks list --filter "severity:'HIGH'"
-            falcon fcs risks list --filter "severity:'CRITICAL'"
+            # Filter by severity (values: Low, Medium, High, Critical — title case)
+            falcon fcs risks list --filter "severity:'High'"
+            falcon fcs risks list --filter "severity:'Critical'"
 
             # Filter by cloud provider — use --grep (the cloud_provider filter field is not reliable)
             falcon fcs risks list --grep aws
